@@ -45,10 +45,10 @@ const benefits = [
 const pricing = [
   { name: "Grátis", price: "R$ 0", highlight: true, note: "Até 25 convidados" },
   { name: "> 25", price: "R$ 7,90", note: "Mais de 25 convidados" },
-  { name: "> 50", price: "R$ 19,90", note: "Mais de 50 convidados" },
-  { name: "> 100", price: "R$ 49,90", note: "Mais de 100 convidados" },
-  { name: "150 convidados", price: "R$ 99,90", note: "Até 150 convidados" },
-  { name: "200+ convidados", price: "R$ 129,90", note: "200 convidados ou mais" },
+  { name: "> 50", price: "R$ 17,90", note: "Mais de 50 convidados" },
+  { name: "> 100", price: "R$ 27,90", note: "Mais de 100 convidados" },
+  { name: "150 convidados", price: "R$ 37,90", note: "Até 150 convidados" },
+  { name: "200+ convidados", price: "R$ 47,90", note: "200 convidados ou mais" },
 ];
 
 const faqs = [
