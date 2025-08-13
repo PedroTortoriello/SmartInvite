@@ -1,8 +1,7 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Event Manager - WhatsApp Integration',
-  description: 'Event management system with WhatsApp integration via Evolution API',
+  title: 'SmartInvite - Eventos',
 }
 
 export default function RootLayout({ children }) {
