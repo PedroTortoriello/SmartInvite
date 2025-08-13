@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils";
 import './App.css'
 const advantages = [
   { icon: <Link2 className="h-4 w-4" />, text: "Links únicos" },
-  { icon: <MessageSquare className="h-4 w-4" />, text: "Lembretes automáticos" },
   { icon: <CheckCircle2 className="h-4 w-4" />, text: "Check-in rápido" },
 ];
 
@@ -28,7 +27,7 @@ const benefits = [
   {
     icon: <Users className="h-5 w-5" aria-hidden />,
     title: "Gestão de convidados",
-    desc: "Acompanhe confirmações, pendências e faça check-in no dia do evento.",
+    desc: "Acompanhe as confirmações do seu evento em tempo real.",
   },
   {
     icon: <Shield className="h-5 w-5" aria-hidden />,
@@ -38,7 +37,7 @@ const benefits = [
   {
     icon: <MessageSquare className="h-5 w-5" aria-hidden />,
     title: "Convites por WhatsApp",
-    desc: "Envie mensagens com o link de RSVP e lembretes automáticos.",
+    desc: "Envie mensagens com o link do evento.",
   },
 ];
 
@@ -47,16 +46,16 @@ const pricing = [
   { name: "> 25", price: "R$ 7,90", note: "Mais de 25 convidados" },
   { name: "> 50", price: "R$ 17,90", note: "Mais de 50 convidados" },
   { name: "> 100", price: "R$ 27,90", note: "Mais de 100 convidados" },
-  { name: "150 convidados", price: "R$ 37,90", note: "Até 150 convidados" },
+  { name: ">150 convidados", price: "R$ 37,90", note: "Até 150 convidados" },
   { name: "200+ convidados", price: "R$ 47,90", note: "200 convidados ou mais" },
 ];
 
 const faqs = [
   { q: "É realmente grátis?", a: "Sim, até 25 convidados é 100% gratuito." },
-  { q: "Como funciona o envio pelo WhatsApp?", a: "Você conecta sua integração e pode enviar convites e lembretes de forma simples." },
+  // { q: "Como funciona o envio pelo WhatsApp?", a: "Você conecta sua integração e pode enviar convites e lembretes de forma simples." },
   { q: "Vocês cobram por mês?", a: "Não. A cobrança é por evento com base no número de convidados." },
   { q: "Posso acompanhar confirmações em tempo real?", a: "Sim. As confirmações (RSVP) aparecem no painel em tempo real." },
-  { q: "Existe check-in no dia do evento?", a: "Sim. Você pode fazer o check-in e registrar presenças rapidamente." },
+  // { q: "Existe check-in no dia do evento?", a: "Sim. Você pode fazer o check-in e registrar presenças rapidamente." },
 ];
 
 export default function Index() {
@@ -131,7 +130,7 @@ export default function Index() {
                 </Button>
               </a>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">Sem cartão de crédito. Comece grátis.</p>
+      
           </div>
 
           <div aria-hidden className="rounded-2xl border border-border bg-card/70 backdrop-blur p-6 shadow-sm">
@@ -141,7 +140,6 @@ export default function Index() {
                   <Calendar className="h-6 w-6 text-primary" />
                 </div>
                 <p className="text-foreground font-semibold">Crie, compartilhe e confirme presenças</p>
-                <p className="text-muted-foreground text-sm mt-1">Uma prévia do seu painel aparecerá aqui</p>
               </div>
             </div>
           </div>
