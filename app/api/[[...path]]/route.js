@@ -41,210 +41,10 @@ export async function OPTIONS() {
   return handleCORS(new NextResponse(null, { status: 200 }))
 }
 
-    if (route.startsWith('/public/rsvp/') && method === 'GET') {
-      const token = route.split('/')[3]
-      const { data: event, error } = await createSupabaseAdmin()
-        .from('events')
-        .select('id, title, description, location, starts_at, rsvp_token')
-        .eq('rsvp_token', token)
-        .single()
-
-      if (error || !event) {
-        return handleCORS(NextResponse.json(
-          { error: "Event not found" },
-          { status: 404 }
-        ))
-      }
-
-      return handleCORS(NextResponse.json(event))
-    }
-
-    // Public RSVP page data
-    if (route.startsWith('/public/event/') && method === 'GET') {
-      const eventId = route.split('/')[3]
-      
-      const { data: event, error } = await supabase
-        .from('events')
-        .select('id, title, description, location, starts_at')
-        .eq('id', eventId)
-        .single()
-
-      if (error) {
-        return handleCORS(NextResponse.json(
-          { error: "Event not found" },
-          { status: 404 }
-        ))
-      }
-
-      return handleCORS(NextResponse.json(event))
-    }
-
-    // Confirma RSVP por token (rota pública)
-// helper opcional: tenta atualizar o status para algo "confirmado"
-async function tryUpgradeRsvpStatus(supabase, { eventId, guestId }) {
-  // tente os que você deseja/imagina que existam no CHECK
-  const CANDIDATES = ['confirmed', 'yes', 'accepted', 'attending', 'going', 'present', 'confirmado'];
-
-  for (const status of CANDIDATES) {
-    const { error } = await supabase
-      .from('rsvps')
-      .update({ status })
-      .eq('event_id', eventId)
-      .eq('guest_id', guestId);
-
-    // se não houver erro, ótimo — status atualizado
-    if (!error) return { ok: true, status };
-    // se der erro por constraint, tenta o próximo
-    const msg = (error?.message || '').toLowerCase();
-    if (msg.includes('check constraint') || msg.includes('invalid') || msg.includes('violates')) continue;
-
-    // erro inesperado — retorna
-    return { ok: false, error };
-  }
-
-  // nenhum dos candidatos foi aceito — seguimos com 'pending'
-  return { ok: false, error: { message: 'Nenhum status alternativo foi aceito; RSVP permanece como pending.' } };
-}
-
-// POST /api/public/rsvp/confirm
-if (route === '/public/rsvp/confirm' && method === 'POST') {
-  const { token, name, companions } = await request.json();
-
-  // validações básicas
-  if (!token || String(token).trim() === '') {
-    return handleCORS(NextResponse.json(
-      { error: "Token é obrigatório" },
-      { status: 400 }
-    ));
-  }
-  if (!name || String(name).trim() === '') {
-    return handleCORS(NextResponse.json(
-      { error: "Nome é obrigatório" },
-      { status: 400 }
-    ));
-  }
-
-  const supabase = createSupabaseAdmin();
-
-  // encontra o evento pelo rsvp_token
-  const { data: event, error: eventError } = await supabase
-    .from('events')
-    .select('id, org_id')
-    .eq('rsvp_token', token)
-    .single();
-
-  if (!event || eventError) {
-    return handleCORS(NextResponse.json(
-      { error: "Evento não encontrado" },
-      { status: 404 }
-    ));
-  }
-
-  // cria o convidado principal
-  const { data: mainGuest, error: mainGuestError } = await supabase
-    .from('guests')
-    .insert([{
-      org_id: event.org_id,
-      event_id: event.id,
-      name: String(name).trim(),
-      email: null,     
-      companion_of: null
-    }])
-    .select()
-    .single();
-
-  if (mainGuestError) {
-    return handleCORS(NextResponse.json(
-      { error: mainGuestError.message },
-      { status: 400 }
-    ));
-  }
-
-  // cria RSVP primeiro como 'pending' (valor aceito)
-  const { error: rsvpInsertErr } = await supabase
-    .from('rsvps')
-    .insert([{
-      event_id: event.id,
-      guest_id: mainGuest.id,
-      status: 'pending'
-    }]);
-
-  if (rsvpInsertErr) {
-    return handleCORS(NextResponse.json(
-      { error: rsvpInsertErr.message },
-      { status: 400 }
-    ));
-  }
-
-  // tenta atualizar para um status "confirmado"; se não der, mantém 'pending'
-  await tryUpgradeRsvpStatus(supabase, {
-    eventId: event.id,
-    guestId: mainGuest.id
-  });
-
-  // normaliza acompanhantes (array de strings, sem vazios)
-  const companionNames = Array.isArray(companions)
-    ? companions.map(c => String(c ?? '').trim()).filter(Boolean)
-    : [];
-
-  const createdCompanions = [];
-  for (const compName of companionNames) {
-    // cria o guest do acompanhante
-    const { data: compGuest, error: compGuestError } = await supabase
-      .from('guests')
-      .insert([{
-        org_id: event.org_id,
-        event_id: event.id,
-        name: compName,
-        email: null,
-        companion_of: mainGuest.id
-      }])
-      .select()
-      .single();
-
-    if (compGuestError) {
-      console.error('Erro ao criar acompanhante:', compName, compGuestError);
-      continue;
-    }
-
-    createdCompanions.push(compGuest);
-
-    // insere RSVP do acompanhante como 'pending' e tenta subir o status
-    const { error: compRsvpInsertErr } = await supabase
-      .from('rsvps')
-      .insert([{
-        event_id: event.id,
-        guest_id: compGuest.id,
-        status: 'pending'
-      }]);
-
-    if (!compRsvpInsertErr) {
-      await tryUpgradeRsvpStatus(supabase, {
-        eventId: event.id,
-        guestId: compGuest.id
-      });
-    } else {
-      console.error('Erro ao criar RSVP do acompanhante:', compName, compRsvpInsertErr);
-    }
-  }
-
-  
-
-  return handleCORS(NextResponse.json({
-    message: "Presença confirmada com sucesso",
-    guest: mainGuest,
-    companions: createdCompanions
-  }));
-}
-
 // Authentication helper
 async function getAuthenticatedUser(request) {
   const supabase = createSupabaseServer()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-  
-  if (!user) {
-    throw new Error('Unauthorized - Please log in')
-  }
   
   return user
 }
@@ -931,6 +731,203 @@ if (route === '/events' && method === 'POST') {
 
       return handleCORS(NextResponse.json({ received: true }))
     }
+
+    if (route.startsWith('/public/rsvp/') && method === 'GET') {
+      const token = route.split('/')[3]
+      const { data: event, error } = await createSupabaseAdmin()
+        .from('events')
+        .select('id, title, description, location, starts_at, rsvp_token')
+        .eq('rsvp_token', token)
+        .single()
+
+      if (error || !event) {
+        return handleCORS(NextResponse.json(
+          { error: "Event not found" },
+          { status: 404 }
+        ))
+      }
+
+      return handleCORS(NextResponse.json(event))
+    }
+
+    // Public RSVP page data
+    if (route.startsWith('/public/event/') && method === 'GET') {
+      const eventId = route.split('/')[3]
+      
+      const { data: event, error } = await supabase
+        .from('events')
+        .select('id, title, description, location, starts_at')
+        .eq('id', eventId)
+        .single()
+
+      if (error) {
+        return handleCORS(NextResponse.json(
+          { error: "Event not found" },
+          { status: 404 }
+        ))
+      }
+
+      return handleCORS(NextResponse.json(event))
+    }
+
+    // Confirma RSVP por token (rota pública)
+// helper opcional: tenta atualizar o status para algo "confirmado"
+async function tryUpgradeRsvpStatus(supabase, { eventId, guestId }) {
+  // tente os que você deseja/imagina que existam no CHECK
+  const CANDIDATES = ['confirmed', 'yes', 'accepted', 'attending', 'going', 'present', 'confirmado'];
+
+  for (const status of CANDIDATES) {
+    const { error } = await supabase
+      .from('rsvps')
+      .update({ status })
+      .eq('event_id', eventId)
+      .eq('guest_id', guestId);
+
+    // se não houver erro, ótimo — status atualizado
+    if (!error) return { ok: true, status };
+    // se der erro por constraint, tenta o próximo
+    const msg = (error?.message || '').toLowerCase();
+    if (msg.includes('check constraint') || msg.includes('invalid') || msg.includes('violates')) continue;
+
+    // erro inesperado — retorna
+    return { ok: false, error };
+  }
+
+  // nenhum dos candidatos foi aceito — seguimos com 'pending'
+  return { ok: false, error: { message: 'Nenhum status alternativo foi aceito; RSVP permanece como pending.' } };
+}
+
+// POST /api/public/rsvp/confirm
+if (route === '/public/rsvp/confirm' && method === 'POST') {
+  const { token, name, companions } = await request.json();
+
+  // validações básicas
+  if (!token || String(token).trim() === '') {
+    return handleCORS(NextResponse.json(
+      { error: "Token é obrigatório" },
+      { status: 400 }
+    ));
+  }
+  if (!name || String(name).trim() === '') {
+    return handleCORS(NextResponse.json(
+      { error: "Nome é obrigatório" },
+      { status: 400 }
+    ));
+  }
+
+  const supabase = createSupabaseAdmin();
+
+  // encontra o evento pelo rsvp_token
+  const { data: event, error: eventError } = await supabase
+    .from('events')
+    .select('id, org_id')
+    .eq('rsvp_token', token)
+    .single();
+
+  if (!event || eventError) {
+    return handleCORS(NextResponse.json(
+      { error: "Evento não encontrado" },
+      { status: 404 }
+    ));
+  }
+
+  // cria o convidado principal
+  const { data: mainGuest, error: mainGuestError } = await supabase
+    .from('guests')
+    .insert([{
+      org_id: event.org_id,
+      event_id: event.id,
+      name: String(name).trim(),
+      email: null,     
+      companion_of: null
+    }])
+    .select()
+    .single();
+
+  if (mainGuestError) {
+    return handleCORS(NextResponse.json(
+      { error: mainGuestError.message },
+      { status: 400 }
+    ));
+  }
+
+  // cria RSVP primeiro como 'pending' (valor aceito)
+  const { error: rsvpInsertErr } = await supabase
+    .from('rsvps')
+    .insert([{
+      event_id: event.id,
+      guest_id: mainGuest.id,
+      status: 'pending'
+    }]);
+
+  if (rsvpInsertErr) {
+    return handleCORS(NextResponse.json(
+      { error: rsvpInsertErr.message },
+      { status: 400 }
+    ));
+  }
+
+  // tenta atualizar para um status "confirmado"; se não der, mantém 'pending'
+  await tryUpgradeRsvpStatus(supabase, {
+    eventId: event.id,
+    guestId: mainGuest.id
+  });
+
+  // normaliza acompanhantes (array de strings, sem vazios)
+  const companionNames = Array.isArray(companions)
+    ? companions.map(c => String(c ?? '').trim()).filter(Boolean)
+    : [];
+
+  const createdCompanions = [];
+  for (const compName of companionNames) {
+    // cria o guest do acompanhante
+    const { data: compGuest, error: compGuestError } = await supabase
+      .from('guests')
+      .insert([{
+        org_id: event.org_id,
+        event_id: event.id,
+        name: compName,
+        email: null,
+        companion_of: mainGuest.id
+      }])
+      .select()
+      .single();
+
+    if (compGuestError) {
+      console.error('Erro ao criar acompanhante:', compName, compGuestError);
+      continue;
+    }
+
+    createdCompanions.push(compGuest);
+
+    // insere RSVP do acompanhante como 'pending' e tenta subir o status
+    const { error: compRsvpInsertErr } = await supabase
+      .from('rsvps')
+      .insert([{
+        event_id: event.id,
+        guest_id: compGuest.id,
+        status: 'pending'
+      }]);
+
+    if (!compRsvpInsertErr) {
+      await tryUpgradeRsvpStatus(supabase, {
+        eventId: event.id,
+        guestId: compGuest.id
+      });
+    } else {
+      console.error('Erro ao criar RSVP do acompanhante:', compName, compRsvpInsertErr);
+    }
+  }
+
+  
+
+  return handleCORS(NextResponse.json({
+    message: "Presença confirmada com sucesso",
+    guest: mainGuest,
+    companions: createdCompanions
+  }));
+}
+
 
 
 
