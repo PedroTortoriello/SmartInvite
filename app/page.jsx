@@ -58,8 +58,26 @@ const faqs = [
   // { q: "Existe check-in no dia do evento?", a: "Sim. Você pode fazer o check-in e registrar presenças rapidamente." },
 ];
 
+import Script from 'next/script';
+
+function Analytics() {
+  return (
+    <>
+      <Script src="https://www.googletagmanager.com/gtag/js?id=G-6H0523WFEX" strategy="afterInteractive" />
+      <Script id="google-analytics" strategy="afterInteractive">{`
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-6H0523WFEX');
+      `}</Script>
+    </>
+  );
+}
+
 export default function Index() {
   return (
+     <>
+    <Analytics />
     <main className="bg-hero min-h-screen">
       {/* Navbar */}
       <header
@@ -231,6 +249,7 @@ export default function Index() {
         Feito para facilitar sua vida com eventos ✨
       </footer>
     </main>
+    </>
   );
 }
 
@@ -284,3 +303,4 @@ function FaqItem({ question, answer }) {
     </AccordionItem>
   );
 }
+
