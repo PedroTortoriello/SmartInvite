@@ -513,13 +513,13 @@ async function continuePayment(ev) {
                     </div>
                               
                       <div className="mt-4 grid grid-cols-2 gap-2">
-                        <Button
+                        {/* <Button
                           variant="outline"
                           className="border-blue-300 text-blue-700 hover:bg-blue-50"
                           onClick={() => loadEventDetails(ev.id)}
                         >
                           Detalhes
-                        </Button>
+                        </Button> */}
 
                         {ev.billing_status === 'pending_payment' ? (
                           <Button
