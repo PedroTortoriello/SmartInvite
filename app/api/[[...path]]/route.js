@@ -307,6 +307,7 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(events || []))
     }
 
+// POST /events
 if (route === '/events' && method === 'POST') {
   const org = await getUserOrg(user.id)
   const body = await request.json()
@@ -315,7 +316,9 @@ if (route === '/events' && method === 'POST') {
     description,
     location,
     startsAt,
+    endsAt,                // opcional
     guests = 0,
+    allowCompanion = false // vindo do Switch no front
   } = body
 
   if (!title || !startsAt) {
@@ -326,13 +329,13 @@ if (route === '/events' && method === 'POST') {
   }
 
   const safeGuests = Number.isFinite(Number(guests)) ? Number(guests) : 0
-  const { priceId, label, tier } = getStripePriceByGuests(safeGuests)
+  const { priceId, tier } = getStripePriceByGuests(safeGuests)
   const requiresPayment = !!priceId
 
   const rsvpToken = uuidv4()
 
-  // cria evento
-  const { data: event, error } = await supabase
+  // cria evento (deixa 'rascunho' se precisar pagar; 'ativo' se for grátis)
+  const { data: event, error: insertErr } = await supabase
     .from('events')
     .insert([{
       org_id: org.id,
@@ -345,19 +348,20 @@ if (route === '/events' && method === 'POST') {
       rsvp_token: rsvpToken,
       guests_planned: safeGuests,
       billing_status: requiresPayment ? 'pending_payment' : 'free',
-      billing_tier: tier
+      billing_tier: tier,
+      allow_companion: !!allowCompanion    // <- nova coluna
     }])
     .select()
     .single()
 
-  if (error) {
+  if (insertErr) {
     return handleCORS(NextResponse.json(
-      { error: `Failed to create event: ${error.message}` },
+      { error: `Failed to create event: ${insertErr.message}` },
       { status: 500 }
     ))
   }
 
-  // grátis → retorna direto
+  // Plano gratuito → retorna direto
   if (!requiresPayment) {
     return handleCORS(NextResponse.json({
       requiresPayment: false,
@@ -365,18 +369,17 @@ if (route === '/events' && method === 'POST') {
     }, { status: 200 }))
   }
 
-  // pago → cria sessão com PRICE correspondente
+  // Plano pago → cria sessão do Stripe usando o PRICE correspondente
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      // você pediu para ir para /Pages em ambos os casos
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/Pages`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/Pages`,
+      cancel_url:  `${process.env.NEXT_PUBLIC_BASE_URL}/Pages`,
       payment_method_types: ['card'],
       locale: 'pt-BR',
       currency: 'brl',
-      line_items: [
-        { price: priceId, quantity: 1 }
-      ],
+      line_items: [{ price: priceId, quantity: 1 }],
       metadata: {
         event_id: event.id,
         org_id: org.id,
@@ -385,12 +388,18 @@ if (route === '/events' && method === 'POST') {
       },
     })
 
+    // guarda o id da sessão, útil para retomar pagamento depois
     await supabase
       .from('events')
-      .update({
-        stripe_session_id: session.id
-      })
+      .update({ stripe_session_id: session.id })
       .eq('id', event.id)
+
+    if (!session?.url) {
+      return handleCORS(NextResponse.json(
+        { error: 'Não foi possível obter a URL de checkout do Stripe.' },
+        { status: 500 }
+      ))
+    }
 
     return handleCORS(NextResponse.json({
       requiresPayment: true,
@@ -736,7 +745,7 @@ if (route === '/events' && method === 'POST') {
       const token = route.split('/')[3]
       const { data: event, error } = await createSupabaseAdmin()
         .from('events')
-        .select('id, title, description, location, starts_at, rsvp_token')
+        .select('id, title, description, location, starts_at, rsvp_token, allow_companion')
         .eq('rsvp_token', token)
         .single()
 

@@ -29,6 +29,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { getPlanForGuests, formatBRLFromCents } from '@/lib/billing/pricing'
+import { Switch } from "@/components/ui/switch"
 
 export default function Dashboard() {
   const router = useRouter()
@@ -360,7 +361,23 @@ async function continuePayment(ev) {
 
   <p className="text-xs text-gray-500 mt-1">Informe quantos convidados estarão presentes.</p>
 </div>
-
+<div>
+  <Label htmlFor="allowCompanion">Permitir acompanhante?</Label>
+  <div className="flex items-center justify-between rounded-md border p-3 mt-1">
+    <span className="text-sm text-gray-600">
+      {eventForm.allowCompanion
+        ? "Os convidados poderão levar um acompanhante"
+        : "Os convidados não poderão levar acompanhante"}
+    </span>
+    <Switch
+      id="allowCompanion"
+      checked={!!eventForm.allowCompanion}
+      onCheckedChange={(checked) =>
+        setEventForm({ ...eventForm, allowCompanion: checked })
+      }
+    />
+  </div>
+ </div>
 
                   <div>
                     <Label>Local</Label>
@@ -491,32 +508,32 @@ async function continuePayment(ev) {
                       <Row icon={<Clock className="w-4 h-4 text-blue-600" />} text={new Date(ev.starts_at).toLocaleString()} />
                       <Row icon={<Users className="w-4 h-4 text-blue-600" />} text={`${ev.guests?.length || 0} convidados`} />
                     </div>
-         
-<div className="mt-4 grid grid-cols-2 gap-2">
-  <Button
-    variant="outline"
-    className="border-blue-300 text-blue-700 hover:bg-blue-50"
-    onClick={() => loadEventDetails(ev.id)}
-  >
-    Detalhes
-  </Button>
+                              
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                          onClick={() => loadEventDetails(ev.id)}
+                        >
+                          Detalhes
+                        </Button>
 
-  {ev.billing_status === 'pending_payment' ? (
-    <Button
-      className="bg-gradient-to-r from-blue-700 to-sky-500"
-      onClick={() => continuePayment(ev)}
-    >
-      Efetuar pagamento
-    </Button>
-  ) : (
-    <Button
-      className="bg-gradient-to-r from-blue-700 to-sky-500"
-      onClick={() => copyRsvpLink(ev)}
-    >
-      Copiar Link
-    </Button>
-  )}
-</div>
+                        {ev.billing_status === 'pending_payment' ? (
+                          <Button
+                            className="bg-gradient-to-r from-blue-700 to-sky-500"
+                            onClick={() => continuePayment(ev)}
+                          >
+                            Efetuar pagamento
+                          </Button>
+                        ) : (
+                          <Button
+                            className="bg-gradient-to-r from-blue-700 to-sky-500"
+                            onClick={() => copyRsvpLink(ev)}
+                          >
+                            Copiar Link
+                          </Button>
+                        )}
+                      </div>
 
                    
                   </CardContent>

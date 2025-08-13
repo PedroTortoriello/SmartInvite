@@ -139,40 +139,44 @@ export default function PublicRSVPPage() {
                 </div>
 
                 {/* Acompanhantes */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Acompanhantes</label>
-                    <button
-                      type="button"
-                      onClick={addCompanion}
-                      className="px-3 py-1 text-sm rounded-full border border-blue-400 text-blue-600 hover:bg-blue-50"
-                    >
-                      + Adicionar
-                    </button>
-                  </div>
+{/* Acompanhantes */}
+{event?.allow_companion && (
+  <div>
+    <div className="flex items-center justify-between mb-2">
+      <label className="block text-sm font-medium text-gray-700">Acompanhantes</label>
+      <button
+        type="button"
+        onClick={addCompanion}
+        className="px-3 py-1 text-sm rounded-full border border-blue-400 text-blue-600 hover:bg-blue-50"
+      >
+        + Adicionar
+      </button>
+    </div>
 
-                  {companions.length > 0 && (
-                    <div className="space-y-2">
-                      {companions.map((c, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <input
-                            value={c}
-                            onChange={(e) => editCompanion(i, e.target.value)}
-                            placeholder={`Acompanhante ${i + 1}`}
-                            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-300"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeCompanion(i)}
-                            className="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-100"
-                          >
-                            Remover
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+    {companions.length > 0 && (
+      <div className="space-y-2">
+        {companions.map((c, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              value={c}
+              onChange={(e) => editCompanion(i, e.target.value)}
+              placeholder={`Acompanhante ${i + 1}`}
+              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-300"
+            />
+            <button
+              type="button"
+              onClick={() => removeCompanion(i)}
+              className="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-100"
+            >
+              Remover
+            </button>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
+
 
                 {error && <p className="text-sm text-red-500">{error}</p>}
 
