@@ -427,7 +427,7 @@ async function continuePayment(ev) {
               <StatCard title="Eventos" value={dashboardStats.totalEvents || 0} icon={<Calendar className="h-4 w-4 text-blue-600" />} />
               <StatCard title="Ativos" value={dashboardStats.activeEvents || 0} icon={<BarChart3 className="h-4 w-4 text-blue-600" />} />
               {/* <StatCard title="Mensagens" value={dashboardStats.messagesSent || 0} icon={<MessageSquare className="h-4 w-4 text-blue-600" />} /> */}
-              <StatCard title="Confirmados" value={dashboardStats.totalGuests || 0} icon={<Users className="h-4 w-4 text-blue-600" />} />
+              {/* <StatCard title="Confirmados" value={dashboardStats.totalGuests || 0} icon={<Users className="h-4 w-4 text-blue-600" />} /> */}
             </div>
 
 <Card className="bg-white/80 backdrop-blur border border-gray-200">
