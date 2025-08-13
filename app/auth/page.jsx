@@ -52,6 +52,7 @@ function AuthInner() {
   }
 
   return (
+    
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-white to-gray-100 grid place-items-center px-4">
       <Card className="w-full max-w-md bg-white/80 backdrop-blur border border-gray-200 shadow-xl">
         <CardHeader className="text-center">

@@ -269,6 +269,7 @@ async function continuePayment(ev) {
 
 
   return (
+     <Suspense fallback={null}>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-100">
       {/* Topbar */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
@@ -649,6 +650,7 @@ async function continuePayment(ev) {
         </Tabs>
       </main>
     </div>
+    </Suspense>
   )
 }
 
