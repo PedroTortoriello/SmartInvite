@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,19 +8,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
 
-export default function AuthPage() {
+function AuthInner() {
   const router = useRouter()
   const search = useSearchParams()
   const defaultMode = search.get('mode') === 'register' ? 'register' : 'login'
 
-  const [mode, setMode] = useState(defaultMode)
+   const [mode, setMode] = useState(defaultMode)
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({ email: '', password: '', fullName: '', orgName: '' })
 
-  useEffect(() => {
-    setMode(defaultMode)
-  }, [defaultMode])
+  useEffect(() => { setMode(defaultMode) }, [defaultMode])
 
   const submit = async (e) => {
     e.preventDefault()
@@ -37,7 +36,6 @@ export default function AuthPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro')
 
-      // login já cria sessão no supabase; cadastro direciona para login
       if (mode === 'register') {
         setMode('login')
         setForm({ email: form.email, password: '', fullName: '', orgName: '' })
@@ -78,10 +76,12 @@ export default function AuthPage() {
                 </div>
               </>
             )}
+
             <div>
               <Label>Email</Label>
               <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
             </div>
+
             <div>
               <Label>Senha</Label>
               <Input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required />
@@ -100,15 +100,20 @@ export default function AuthPage() {
           </form>
 
           <div className="text-center mt-4">
-            <Button
-              variant="ghost"
-              onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-            >
+            <Button variant="ghost" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
               {mode === 'login' ? 'Não tem conta? Cadastre-se' : 'Já tenho conta'}
             </Button>
           </div>
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center">Carregando...</div>}>
+      <AuthInner />
+    </Suspense>
   )
 }
