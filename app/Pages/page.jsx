@@ -457,9 +457,7 @@ async function continuePayment(ev) {
 <div className="flex items-center gap-3">
   {/* bolinha de status (mantém se quiser) */}
   <span
-    className={`w-3 h-3 rounded-full ${
-      ev.status === "active" ? "bg-green-500" : "bg-red-500"
-    }`}
+    className={`w-3 h-3 rounded-full `}
   />
   {ev.billing_status === 'pending_payment' ? (
     <Button
