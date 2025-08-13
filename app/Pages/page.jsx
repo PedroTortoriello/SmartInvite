@@ -442,9 +442,16 @@ async function continuePayment(ev) {
       >
         <div>
           <div className="font-semibold text-blue-900">{ev.title}</div>
-          <div className="text-xs text-gray-600">
-            {new Date(ev.starts_at).toLocaleString()}
-          </div>
+<div className="text-xs text-gray-600">
+  {new Date(ev.starts_at).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })}
+</div>
+
         </div>
         <div className="flex items-center gap-3">
           {/* Bolinha de status */}
