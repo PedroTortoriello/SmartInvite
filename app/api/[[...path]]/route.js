@@ -316,7 +316,7 @@ if (route === '/events' && method === 'POST') {
     description,
     location,
     startsAt,
-    endsAt,                // opcional
+    templateKind = 'default', // vindo do Select no front
     guests = 0,
     allowCompanion = false // vindo do Switch no front
   } = body
@@ -342,6 +342,7 @@ if (route === '/events' && method === 'POST') {
       title,
       description,
       location,
+      template_kind: templateKind,
       starts_at: startsAt,
       created_by: user.id,
       status: requiresPayment ? 'rascunho' : 'ativo',
@@ -745,7 +746,7 @@ if (route === '/events' && method === 'POST') {
       const token = route.split('/')[3]
       const { data: event, error } = await createSupabaseAdmin()
         .from('events')
-        .select('id, title, description, location, starts_at, rsvp_token, allow_companion')
+        .select('id, title, description, location, starts_at, rsvp_token, allow_companion, template_kind, confirm_page')
         .eq('rsvp_token', token)
         .single()
 

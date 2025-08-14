@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select as ShadSelect, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { 
   Calendar, 
@@ -26,7 +26,7 @@ import {
   Phone,
   Mail,
   Tag,
-  Loader2
+  Loader2,
 } from 'lucide-react'
 import { getPlanForGuests, formatBRLFromCents } from '@/lib/billing/pricing'
 import { Switch } from "@/components/ui/switch"
@@ -44,9 +44,17 @@ const [loadingConfirm, setLoadingConfirm] = useState(false);
   const [templates, setTemplates] = useState([])
   const [dashboardStats, setDashboardStats] = useState({})
   const [currentEvent, setCurrentEvent] = useState(null)
-  
+
   // Forms state
-  const [eventForm, setEventForm] = useState({ title: '', description: '', location: '', startsAt: '', endsAt: '' })
+  // estado do formulário
+const [eventForm, setEventForm] = useState({
+  title: '', description: '', location: '',
+  startsAt: '', guests: 0, allowCompanion: false,
+  templateKind: 'default',
+  initialGifts: [],            // [{title:'', link:'', priceCents:''}]
+  initialRoles: []             // [{role:'padrinho'|'madrinha', name:''}]
+})
+
   const [guestForm, setGuestForm] = useState({ name: '', phoneE164: '', email: '', tag: '' })
   const [templateForm, setTemplateForm] = useState({ name: '', bodyText: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -162,6 +170,12 @@ const createEvent = async (e) => {
     setEvents([data, ...events])
     setEventForm({ title: '', description: '', location: '', startsAt: '', endsAt: '', guests: 0, allowCompanion: false })
     alert('Evento criado!')
+    // Se for até 25 convidados e não precisar pagar
+if ((data.guests || 0) <= 25) {
+  window.location.reload()
+} else {
+  alert('Evento criado!')
+}
   } catch (err) {
     alert(err.message)
   } finally {
@@ -318,6 +332,29 @@ function exportGuestsCSV() {
   URL.revokeObjectURL(url);
 }
 
+const addGift = () =>
+  setEventForm(f => ({...f, initialGifts: [...(f.initialGifts||[]), { title:'', link:'', priceCents:'' }]}))
+
+const editGift = (i, field, value) =>
+  setEventForm(f => ({
+    ...f,
+    initialGifts: f.initialGifts.map((g,idx)=> idx===i ? {...g, [field]: value} : g)
+  }))
+
+const removeGift = (i) =>
+  setEventForm(f => ({...f, initialGifts: f.initialGifts.filter((_,idx)=> idx!==i)}))
+
+const addRole = () =>
+  setEventForm(f => ({...f, initialRoles: [...(f.initialRoles||[]), { role:'padrinho', name:'' }]}))
+
+const editRole = (i, field, value) =>
+  setEventForm(f => ({
+    ...f,
+    initialRoles: f.initialRoles.map((r,idx)=> idx===i ? {...r, [field]: value} : r)
+  }))
+
+const removeRole = (i) =>
+  setEventForm(f => ({...f, initialRoles: f.initialRoles.filter((_,idx)=> idx!==i)}))
 
 
   return (
@@ -380,6 +417,80 @@ function exportGuestsCSV() {
       +
     </Button>
   </div>
+
+{/* <div>
+  <Label>Tipo de página</Label>
+<ShadSelect
+  value={eventForm.templateKind || "default"}
+  onValueChange={(value) => setEventForm({ ...eventForm, templateKind: value })}
+>
+  <SelectTrigger className="w-full mt-1">
+    <SelectValue placeholder="Selecione o tipo" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="default">Padrão</SelectItem>
+    <SelectItem value="aniversario">Aniversário</SelectItem>
+    <SelectItem value="casamento">Casamento</SelectItem>
+    <SelectItem value="outros">Outros</SelectItem>
+  </SelectContent>
+</ShadSelect>
+
+  <p className="text-xs text-gray-500 mt-1">
+    Isso define os blocos extras (lista de presentes, padrinhos etc.) da página pública.
+  </p>
+</div> */}
+{/* Lista de Presentes (aniversário e casamento) */}
+{['aniversario','casamento'].includes(eventForm.templateKind) && (
+  <div className="mt-3 space-y-2">
+    <Label>Lista de presentes</Label>
+    {(eventForm.initialGifts||[]).map((g,i)=>(
+      <div key={i} className="grid grid-cols-1 sm:grid-cols-6 gap-2">
+        <Input className="sm:col-span-2" placeholder="Título"
+          value={g.title}
+          onChange={e=>editGift(i,'title', e.target.value)} />
+        <Input className="sm:col-span-3" placeholder="Link (opcional)"
+          value={g.link||''}
+          onChange={e=>editGift(i,'link', e.target.value)} />
+        <Input className="sm:col-span-1" type="number" min="0" placeholder="Preço (centavos)"
+          value={g.priceCents||''}
+          onChange={e=>editGift(i,'priceCents', e.target.value.replace(/\D/g,''))} />
+        <Button type="button" variant="outline" onClick={()=>removeGift(i)}>Remover</Button>
+      </div>
+    ))}
+    <Button type="button" variant="outline" onClick={addGift}>+ Adicionar presente</Button>
+    <p className="text-xs text-gray-500">Preço em centavos é opcional (ex.: R$ 199,90 → 19990).</p>
+  </div>
+)}
+
+{/* Padrinhos/Madrinhas (casamento) */}
+{eventForm.templateKind === 'casamento' && (
+  <div className="mt-4 space-y-2">
+    <Label>Padrinhos e Madrinhas</Label>
+    {(eventForm.initialRoles||[]).map((r,i)=>(
+      <div key={i} className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+        <ShadSelect
+          value={r.role}
+          onValueChange={(value) => editRole(i, "role", value)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Selecione o tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="padrinho">Padrinho</SelectItem>
+            <SelectItem value="madrinha">Madrinha</SelectItem>
+          </SelectContent>
+        </ShadSelect>
+        <Input className="sm:col-span-3" placeholder="Nome"
+          value={r.name}
+          onChange={e=>editRole(i,'name', e.target.value)} />
+        <Button type="button" variant="outline" onClick={()=>removeRole(i)}>Remover</Button>
+      </div>
+    ))}
+    <Button type="button" variant="outline" onClick={addRole}>+ Adicionar</Button>
+  </div>
+)}
+
+
 
   {/* Aviso de preço dinâmico */}
   <div
@@ -510,29 +621,24 @@ function exportGuestsCSV() {
             className={`w-3 h-3 rounded-full `}
           ></span>
 
-<div className="flex items-center gap-3">
-  {/* bolinha de status (mantém se quiser) */}
-  <span
-    className={`w-3 h-3 rounded-full `}
-  />
-<Button
-  variant="outline"
-  size="sm"
-  className="border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-black"
-  onClick={() => openConfirmed(ev)}
->
-  Ver confirmados
-</Button>
-    <Button
-      variant="outline"
-      size="sm"
-      className="border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-black"
-      onClick={() => copyRsvpLink(ev)}
-    >
-      Copiar Link
-    </Button>
-
-</div>
+   <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-900 sm:w-auto"
+            onClick={() => openConfirmed(ev)}
+          >
+            Confirmados
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-900 sm:w-auto"
+            onClick={() => copyRsvpLink(ev)}
+          >
+            Copiar link
+          </Button>
+        </div>
 
         </div>
       </div>
@@ -586,13 +692,13 @@ function exportGuestsCSV() {
       <Button variant="outline" onClick={() => setConfirmModalOpen(false)}>
         Fechar
       </Button>
-       <Button
+       {/* <Button
         onClick={exportGuestsCSV}
         disabled={loadingConfirm || confirmGuests.length === 0}
         className="bg-gradient-to-r from-blue-700 to-sky-500"
       >
         Exportar CSV
-      </Button> 
+      </Button>  */}
     </div>
   </DialogContent>
 </Dialog>
@@ -612,7 +718,13 @@ function exportGuestsCSV() {
                   <CardContent>
                     <div className="space-y-2 text-sm text-gray-700">
                       {ev.location && <Row icon={<MapPin className="w-4 h-4 text-blue-600" />} text={ev.location} />}
-                      <Row icon={<Clock className="w-4 h-4 text-blue-600" />} text={new Date(ev.starts_at).toLocaleString()} />
+                      <Row icon={<Clock className="w-4 h-4 text-blue-600" />} text={new Date(ev.starts_at).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })}/>  
                       <Row icon={<Users className="w-4 h-4 text-blue-600" />} text={`${ev.guests?.length || 0} confirmados`} />
                     </div>
                               
