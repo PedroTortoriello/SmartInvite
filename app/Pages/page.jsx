@@ -113,31 +113,38 @@ export default function Dashboard() {
     }
   }
 
+  // Converte "YYYY-MM-DDTHH:mm" para ISO com timezone São Paulo (UTC-3)
+function toSaoPauloISO(dtLocal) {
+  if (!dtLocal) return null;            // aceita vazio
+  if (/([Z]|[+-]\d\d:\d\d)$/.test(dtLocal)) return dtLocal; // já tem offset
+  return `${dtLocal}:00-03:00`;         // Brasil sem horário de verão desde 2019
+}
+
 const createEvent = async (e) => {
   e.preventDefault()
   setIsSubmitting(true)
 
   try {
+    const payload = {
+      ...eventForm,
+      startsAt: toSaoPauloISO(eventForm.startsAt),
+      endsAt: eventForm.endsAt ? toSaoPauloISO(eventForm.endsAt) : null,
+      allowCompanion: !!eventForm.allowCompanion,
+    }
+
     const res = await fetch('/api/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(eventForm), // certifique-se de incluir eventForm.guests
+      body: JSON.stringify(payload),
     })
 
-    // Tenta ler o corpo mesmo em 4xx (para capturar checkoutUrl em 402 em ambientes antigos)
     let data = null
-    try { data = await res.json() } catch { data = null }
+    try { data = await res.json() } catch {}
 
-    // Se a API indicar pagamento (200 com requiresPayment) ou usou 402
     const needsPayment = res.status === 402 || (data && data.requiresPayment)
     if (needsPayment) {
-      const checkoutUrl =
-        data?.checkoutUrl ||
-        data?.url ||
-        data?.session?.url
-
+      const checkoutUrl = data?.checkoutUrl || data?.url || data?.session?.url
       if (checkoutUrl) {
-        // redireciona para o checkout da Stripe
         window.location.href = checkoutUrl
         return
       } else {
@@ -145,14 +152,12 @@ const createEvent = async (e) => {
       }
     }
 
-    // Fluxo grátis (ou sucesso normal)
     if (!res.ok) {
       throw new Error(data?.error || 'Erro ao criar evento')
     }
 
-    // Atualiza lista e limpa formulário
     setEvents([data, ...events])
-    setEventForm({ title: '', description: '', location: '', startsAt: '', endsAt: '', guests: 0 })
+    setEventForm({ title: '', description: '', location: '', startsAt: '', endsAt: '', guests: 0, allowCompanion: false })
     alert('Evento criado!')
   } catch (err) {
     alert(err.message)
@@ -160,6 +165,7 @@ const createEvent = async (e) => {
     setIsSubmitting(false)
   }
 }
+
 
 
   const addGuest = async (eventId) => {

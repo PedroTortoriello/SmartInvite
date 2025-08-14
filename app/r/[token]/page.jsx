@@ -12,10 +12,22 @@ export default function PublicRSVPPage() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
 
-  const dateLabel = useMemo(() => {
-    if (!event?.starts_at) return ''
-    try { return new Date(event.starts_at).toLocaleString() } catch { return event.starts_at }
-  }, [event?.starts_at])
+const dateLabel = useMemo(() => {
+  if (!event?.starts_at) return ''
+  try {
+    return new Date(event.starts_at).toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch {
+    return event.starts_at
+  }
+}, [event?.starts_at])
+
 
   useEffect(() => {
     async function fetchEvent() {
@@ -42,6 +54,7 @@ export default function PublicRSVPPage() {
     [event?.location]
   )
 
+  
   const canSubmit = name.trim().length >= 3 && !submitting
 
   async function onSubmit(e) {
