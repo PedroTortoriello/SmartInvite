@@ -759,6 +759,64 @@ if (route === '/events' && method === 'POST') {
       return handleCORS(NextResponse.json(event))
     }
 
+    // GET /events/:id/guests?status=confirmed|all
+if (route.startsWith('/events/') && route.endsWith('/guests') && method === 'GET') {
+  const parts = route.split('/'); // ["", "events", ":id", "guests"]
+  const eventId = parts[2];
+  if (!eventId) {
+    return handleCORS(NextResponse.json({ error: 'eventId inválido' }, { status: 400 }));
+  }
+
+  const url = new URL(request.url);
+  const statusParam = url.searchParams.get('status') || 'all';
+
+  // status “confirmado”: aceita variações comuns
+  const CONFIRMED_STATUSES = [
+    'confirmed', 'confirmado', 'yes', 'accepted', 'attending', 'going', 'present'
+  ];
+
+  // Garante que o evento é da organização do usuário logado
+  const org = await getUserOrg(user.id);
+  const { data: evOk } = await createSupabaseAdmin()
+    .from('events')
+    .select('id')
+    .eq('id', eventId)
+    .eq('org_id', org.id)
+    .maybeSingle();
+
+  if (!evOk) {
+    return handleCORS(NextResponse.json({ error: 'Evento não encontrado' }, { status: 404 }));
+  }
+
+  // Busca via relação do PostgREST: rsvps -> guests
+  const supabase = createSupabaseAdmin();
+  let query = supabase
+    .from('rsvps')
+    .select(`
+      status,
+      guest:guests (
+        id, name, email, companion_of, created_at
+      )
+    `)
+    .eq('event_id', eventId);
+
+  if (statusParam === 'confirmed') {
+    query = query.in('status', CONFIRMED_STATUSES);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    return handleCORS(NextResponse.json({ error: error.message }, { status: 500 }));
+  }
+
+  // Normaliza para um array só de convidados
+  const guests = (data || [])
+    .map(r => ({ ...r.guest, rsvp_status: r.status }))
+    .filter(Boolean);
+
+  return handleCORS(NextResponse.json({ guests }));
+}
+
     // Public RSVP page data
     if (route.startsWith('/public/event/') && method === 'GET') {
       const eventId = route.split('/')[3]

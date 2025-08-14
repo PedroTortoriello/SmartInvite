@@ -35,7 +35,10 @@ export default function Dashboard() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  
+  // estados
+const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+const [confirmGuests, setConfirmGuests] = useState([]);
+const [loadingConfirm, setLoadingConfirm] = useState(false);
   // App state
   const [events, setEvents] = useState([])
   const [templates, setTemplates] = useState([])
@@ -274,6 +277,51 @@ async function continuePayment(ev) {
 
 
 
+// buscar confirmados de um evento
+async function openConfirmed(ev) {
+  setLoadingConfirm(true);
+  setConfirmGuests([]);
+  try {
+    const res = await fetch(`/api/events/${ev.id}/guests?status=confirmed`, { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'Falha ao carregar confirmados');
+    setConfirmGuests(data.guests || []);
+    setConfirmModalOpen(true);
+  } catch (e) {
+    alert(e.message || 'Erro ao carregar convidados confirmados');
+  } finally {
+    setLoadingConfirm(false);
+  }
+}
+
+// exportar CSV (cliente)
+function exportGuestsCSV() {
+  const header = ['Nome', 'Email', 'Telefone', 'É acompanhante de?'];
+  const rows = confirmGuests.map(g => ([
+    g?.name || '',
+    g?.email || '',
+    g?.phone_e164 || g?.phone || '',
+    g?.companion_of ? String(g.companion_of) : ''
+  ]));
+
+  const escapeCSV = (v) => {
+    const s = String(v ?? '');
+    if (/[",;\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+
+  const csv = [header, ...rows].map(r => r.map(escapeCSV).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `convidados-confirmados-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+
 
   return (
      <Suspense fallback={null}>
@@ -470,11 +518,18 @@ async function continuePayment(ev) {
   <span
     className={`w-3 h-3 rounded-full `}
   />
-
+<Button
+  variant="outline"
+  size="sm"
+  className="border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-black"
+  onClick={() => openConfirmed(ev)}
+>
+  Ver confirmados
+</Button>
     <Button
       variant="outline"
       size="sm"
-      className="border-blue-300 text-blue-700 hover:bg-blue-50"
+      className="border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-black"
       onClick={() => copyRsvpLink(ev)}
     >
       Copiar Link
@@ -489,6 +544,61 @@ async function continuePayment(ev) {
 </Card>
 
           </TabsContent>
+<Dialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
+  <DialogContent className="bg-white/95 backdrop-blur border border-gray-200 max-w-2xl">
+    <DialogHeader>
+      <DialogTitle className="text-blue-900">Convidados confirmados</DialogTitle>
+      <DialogDescription>
+        {loadingConfirm
+          ? 'Carregando…'
+          : `${confirmGuests.length} confirmado(s)`}
+      </DialogDescription>
+    </DialogHeader>
+
+    {!loadingConfirm && (
+      <div className="max-h-80 overflow-auto border rounded-md">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 sticky top-0">
+            <tr>
+              <th className="text-left p-2">Nome</th>
+              {/* <th className="text-left p-2">Email</th>
+              <th className="text-left p-2">Telefone</th> */}
+            </tr>
+          </thead>
+          <tbody>
+            {confirmGuests.map(g => (
+              <tr key={g.id} className="border-t">
+                <td className="p-2">{g.name || '-'}</td>
+                {/* <td className="p-2">{g.email || '-'}</td>
+                <td className="p-2">{g.phone_e164 || g.phone || '-'}</td> */}
+              </tr>
+            ))}
+            {confirmGuests.length === 0 && (
+              <tr>
+                <td className="p-4 text-gray-500" colSpan={3}>
+                  Nenhum confirmado até o momento.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+    <div className="flex justify-end gap-2 pt-3">
+      <Button variant="outline" onClick={() => setConfirmModalOpen(false)}>
+        Fechar
+      </Button>
+      {/* <Button
+        onClick={exportGuestsCSV}
+        disabled={loadingConfirm || confirmGuests.length === 0}
+        className="bg-gradient-to-r from-blue-700 to-sky-500"
+      >
+        Exportar CSV
+      </Button> */}
+    </div>
+  </DialogContent>
+</Dialog>
 
           {/* Eventos */}
           <TabsContent value="events" className="space-y-6">
@@ -506,17 +616,18 @@ async function continuePayment(ev) {
                     <div className="space-y-2 text-sm text-gray-700">
                       {ev.location && <Row icon={<MapPin className="w-4 h-4 text-blue-600" />} text={ev.location} />}
                       <Row icon={<Clock className="w-4 h-4 text-blue-600" />} text={new Date(ev.starts_at).toLocaleString()} />
-                      <Row icon={<Users className="w-4 h-4 text-blue-600" />} text={`${ev.guests?.length || 0} convidados`} />
+                      <Row icon={<Users className="w-4 h-4 text-blue-600" />} text={`${ev.guests?.length || 0} confirmados`} />
                     </div>
                               
                       <div className="mt-4 grid grid-cols-2 gap-2">
-                        {/* <Button
+                        <Button
                           variant="outline"
-                          className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                          onClick={() => loadEventDetails(ev.id)}
+                          size="sm"
+                          className="border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-black"
+                          onClick={() => openConfirmed(ev)}
                         >
-                          Detalhes
-                        </Button> */}
+                          Ver confirmados
+                        </Button>
 
                           <Button
                             className="bg-gradient-to-r from-blue-700 to-sky-500"
