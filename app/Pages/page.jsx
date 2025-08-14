@@ -470,16 +470,7 @@ async function continuePayment(ev) {
   <span
     className={`w-3 h-3 rounded-full `}
   />
-  {ev.billing_status === 'pending_payment' ? (
-    <Button
-      variant="default"
-      size="sm"
-      onClick={() => continuePayment(ev)}
-      className="bg-gradient-to-r from-blue-700 to-sky-500 hover:from-blue-800 hover:to-sky-600"
-    >
-      Efetuar pagamento
-    </Button>
-  ) : (
+
     <Button
       variant="outline"
       size="sm"
@@ -488,7 +479,7 @@ async function continuePayment(ev) {
     >
       Copiar Link
     </Button>
-  )}
+
 </div>
 
         </div>
@@ -527,21 +518,13 @@ async function continuePayment(ev) {
                           Detalhes
                         </Button> */}
 
-                        {ev.billing_status === 'pending_payment' ? (
-                          <Button
-                            className="bg-gradient-to-r from-blue-700 to-sky-500"
-                            onClick={() => continuePayment(ev)}
-                          >
-                            Efetuar pagamento
-                          </Button>
-                        ) : (
                           <Button
                             className="bg-gradient-to-r from-blue-700 to-sky-500"
                             onClick={() => copyRsvpLink(ev)}
                           >
                             Copiar Link
                           </Button>
-                        )}
+                     
                       </div>
 
                    
