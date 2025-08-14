@@ -296,12 +296,9 @@ async function openConfirmed(ev) {
 
 // exportar CSV (cliente)
 function exportGuestsCSV() {
-  const header = ['Nome', 'Email', 'Telefone', 'É acompanhante de?'];
+  const header = ['Nome'];
   const rows = confirmGuests.map(g => ([
-    g?.name || '',
-    g?.email || '',
-    g?.phone_e164 || g?.phone || '',
-    g?.companion_of ? String(g.companion_of) : ''
+    g?.name || ''
   ]));
 
   const escapeCSV = (v) => {
@@ -316,7 +313,7 @@ function exportGuestsCSV() {
 
   const a = document.createElement('a');
   a.href = url;
-  a.download = `convidados-confirmados-${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `convidados-confirmados.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -589,13 +586,13 @@ function exportGuestsCSV() {
       <Button variant="outline" onClick={() => setConfirmModalOpen(false)}>
         Fechar
       </Button>
-      {/* <Button
+       <Button
         onClick={exportGuestsCSV}
         disabled={loadingConfirm || confirmGuests.length === 0}
         className="bg-gradient-to-r from-blue-700 to-sky-500"
       >
         Exportar CSV
-      </Button> */}
+      </Button> 
     </div>
   </DialogContent>
 </Dialog>
