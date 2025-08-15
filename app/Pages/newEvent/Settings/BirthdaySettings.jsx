@@ -5,39 +5,69 @@ import { Gift, Cake } from "lucide-react";
 /**
  * @param {{ hasGiftList: boolean, onGiftListChange: (enabled: boolean) => void }} props
  */
-export function BirthdaySettings({ hasGiftList, onGiftListChange }) {
+export default function PreviewBirthdayLayout() {
+  const [name, setName] = useState('João Pedro');
+  const [companions, setCompanions] = useState(['Ana', 'Carlos']);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [done, setDone] = useState(false);
+
+  const addCompanion = () => setCompanions(prev => [...prev, '']);
+  const removeCompanion = (i) =>
+    setCompanions(prev => prev.filter((_, idx) => idx !== i));
+  const editCompanion = (i, value) =>
+    setCompanions(prev => prev.map((c, idx) => (idx === i ? value : c)));
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      // simular sucesso
+      await new Promise(r => setTimeout(r, 800));
+      setDone(true);
+    } catch (err) {
+      setError('Falha ao confirmar presença');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const canSubmit = name.trim().length > 0;
+
+  const formatPrice = (priceCents) =>
+    typeof priceCents === 'number'
+      ? (priceCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      : null;
+
+  const event = {
+    title: 'Aniversário da Maria Clara',
+    description: 'Venha comemorar meus 25 anos com muita alegria e música! 🎶',
+    location: 'Salão de Festas Jardins',
+    allow_companion: true,
+    gifts: [
+      { id: 1, title: 'Kit de Maquiagem', link: 'https://example.com/maquiagem', price_cents: 19990 },
+      { id: 2, title: 'Livro de Romance', link: 'https://example.com/livro', price_cents: 4990 },
+    ],
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Cake className="h-5 w-5 text-primary" />
-        <Label className="text-base font-semibold text-foreground">
-          Configurações do Aniversário
-        </Label>
-      </div>
-      
-      <div className="p-4 border border-border rounded-lg bg-card">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Gift className="h-4 w-4 text-muted-foreground" />
-              <Label htmlFor="gift-list-toggle" className="font-medium">
-                Lista de Presentes
-              </Label>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {hasGiftList 
-                ? 'Os convidados verão uma lista de presentes sugeridos'
-                : 'A página não mostrará lista de presentes'
-              }
-            </p>
-          </div>
-          <Switch
-            id="gift-list-toggle"
-            checked={hasGiftList}
-            onCheckedChange={onGiftListChange}
-          />
-        </div>
-      </div>
-    </div>
+    <BirthdayLayout
+      event={event}
+      dateLabel="25/09/2025 às 19h"
+      name={name}
+      setName={setName}
+      companions={companions}
+      addCompanion={addCompanion}
+      removeCompanion={removeCompanion}
+      editCompanion={editCompanion}
+      onSubmit={onSubmit}
+      canSubmit={canSubmit}
+      submitting={submitting}
+      error={error}
+      done={done}
+      openInMapsUrl="https://www.google.com/maps"
+      formatPrice={formatPrice}
+    />
   );
 }

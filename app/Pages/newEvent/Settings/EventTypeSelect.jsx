@@ -58,7 +58,7 @@ export function EventTypeSelector({ value, onChange }) {
               className={`
                 relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200
                 ${isSelected 
-                  ? 'border-primary bg-accent shadow-medium' 
+                  ? 'border-primary bg-[hsl(var(--accent2))] shadow-medium' // trocado para bg-fundo
                   : 'border-border bg-card hover:border-accent-foreground/50 hover:shadow-soft'
                 }
               `}
