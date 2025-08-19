@@ -32,6 +32,13 @@ import { getPlanForGuests, formatBRLFromCents } from '@/lib/billing/pricing'
 import { Switch } from "@/components/ui/switch"
 import Link from 'next/link'
 import AppAlert from '@/components/ui/app-alert'
+import { Menu } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 
 export default function Dashboard() {
   const router = useRouter()
@@ -376,17 +383,27 @@ const removeRole = (i) =>
       SmartInvite
     </div>
 
-    <div className="flex items-center gap-3">
-      <Button
-        asChild
-        className="bg-gradient-to-r from-blue-700 to-sky-500 hover:from-blue-800 hover:to-sky-600"
-      >
-        <Link href="/Pages/newEvent">
-          <Plus className="w-4 h-4 mr-2" />
-          Criar Evento
-        </Link>
-      </Button>
-    </div>
+ <div className="sm:hidden">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link href="/Pages/newEvent" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Criar Evento
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              Sair
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
   </div>
 </header>
 

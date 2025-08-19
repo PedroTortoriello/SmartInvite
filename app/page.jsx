@@ -114,7 +114,7 @@ export default function Index() {
           <div>
             <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary tracking-wide">
               <span className="inline-flex items-center gap-1">
-                RSVP • WhatsApp • Check-in
+                RSVP • WhatsApp 
               </span>
             </div>
             <h1 className="mt-3 text-4xl md:text-5xl font-extrabold leading-tight text-foreground">
