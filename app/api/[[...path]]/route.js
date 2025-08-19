@@ -49,6 +49,20 @@ async function getAuthenticatedUser(request) {
   return user
 }
 
+function shortPrefixForTemplateKind(kind) {
+  const k = String(kind || '').toLowerCase();
+
+  // casamento
+  if (['wedding', 'casamento', 'w'].includes(k)) return 'w';
+
+  // aniversário
+  if (['birthday', 'aniversario', 'aniversário', 'b'].includes(k)) return 'b';
+
+  // padrão
+  return 'r';
+}
+
+
 // Get user's organization
 async function getUserOrg(userId) {
   const supabase = createSupabaseAdmin()
@@ -290,36 +304,48 @@ async function handleRoute(request, { params }) {
     if (route === '/events' && method === 'GET') {
       const org = await getUserOrg(user.id)
       
-      const { data: events, error } = await supabase
-        .from('events')
-        .select(`
-          *,
-          guests (id),
-          rsvps (id, status)
-        `)
-        .eq('org_id', org.id)
-        .order('created_at', { ascending: false })
+      
+    const { data: events, error } = await supabase
+      .from('events')
+      .select(`
+        *,
+        guests (id),
+        rsvps (id, status),
+        gifts (*),              
+        wedding_roles (*)      
+      `)
+      .eq('org_id', org.id)
+      .order('created_at', { ascending: false });
+
 
       if (error) {
         throw new Error(`Failed to fetch events: ${error.message}`)
       }
 
-      return handleCORS(NextResponse.json(events || []))
+      const withPaths = (events || []).map(ev => {
+  const prefix = shortPrefixForTemplateKind(ev.template_kind);
+  return { ...ev, public_rsvp_path: `/${prefix}/${ev.rsvp_token}` };
+});
+
+return handleCORS(NextResponse.json(withPaths));
+
     }
 
 // POST /events
 if (route === '/events' && method === 'POST') {
   const org = await getUserOrg(user.id)
   const body = await request.json()
-  const {
-    title,
-    description,
-    location,
-    startsAt,
-    templateKind = 'default', // vindo do Select no front
-    guests = 0,
-    allowCompanion = false // vindo do Switch no front
-  } = body
+const {
+  title,
+  description,
+  location,
+  startsAt,
+  templateKind = 'default',
+  guests = 0,
+  allowCompanion = false,
+  initialGifts = [],            // <- ADICIONE
+  initialRoles = []             // <- ADICIONE
+} = body;
 
   if (!title || !startsAt) {
     return handleCORS(NextResponse.json(
@@ -332,7 +358,9 @@ if (route === '/events' && method === 'POST') {
   const { priceId, tier } = getStripePriceByGuests(safeGuests)
   const requiresPayment = !!priceId
 
-  const rsvpToken = uuidv4()
+  const rsvpToken = uuidv4();
+  const shortPrefix = shortPrefixForTemplateKind(templateKind);
+  const publicRsvpPath = `/${shortPrefix}/${rsvpToken}`;
 
   // cria evento (deixa 'rascunho' se precisar pagar; 'ativo' se for grátis)
   const { data: event, error: insertErr } = await supabase
@@ -351,6 +379,7 @@ if (route === '/events' && method === 'POST') {
       billing_status: requiresPayment ? 'pending_payment' : 'free',
       billing_tier: tier,
       allow_companion: !!allowCompanion    // <- nova coluna
+
     }])
     .select()
     .single()
@@ -361,14 +390,66 @@ if (route === '/events' && method === 'POST') {
       { status: 500 }
     ))
   }
+  // Normaliza e insere presentes (gifts)
+let giftsInserted = [];
+if (Array.isArray(initialGifts) && initialGifts.length > 0) {
+  const rows = initialGifts
+    .map((g) => ({
+      org_id: org.id,
+      event_id: event.id,
+      title: String(g.title || '').trim(),
+      link: g.link ? String(g.link).trim() : null,
+      price_cents: Number.isFinite(Number(g.priceCents ?? g.price_cents))
+        ? Number(g.priceCents ?? g.price_cents)
+        : null
+    }))
+    .filter(r => r.title); // só insere se tiver título
+
+  if (rows.length) {
+    const { data: giftsData, error: giftsErr } = await supabase
+      .from('gifts')
+      .insert(rows)
+      .select('*');
+    if (giftsErr) console.error('Insert gifts error:', giftsErr);
+    else giftsInserted = giftsData || [];
+  }
+}
+
+// Normaliza e insere padrinhos/madrinhas (wedding_roles)
+let rolesInserted = [];
+if (Array.isArray(initialRoles) && initialRoles.length > 0) {
+  const rows = initialRoles
+    .map((r) => ({
+      org_id: org.id,
+      event_id: event.id,
+      role: (r.role || '').toLowerCase() === 'madrinha' ? 'madrinha' : 'padrinho',
+      name: String(r.name || '').trim()
+    }))
+    .filter(r => r.name); // só insere se tiver nome
+
+  if (rows.length) {
+    const { data: rolesData, error: rolesErr } = await supabase
+      .from('wedding_roles')
+      .insert(rows)
+      .select('*');
+    if (rolesErr) console.error('Insert wedding_roles error:', rolesErr);
+    else rolesInserted = rolesData || [];
+  }
+}
+
 
   // Plano gratuito → retorna direto
-  if (!requiresPayment) {
-    return handleCORS(NextResponse.json({
-      requiresPayment: false,
-      event
-    }, { status: 200 }))
-  }
+if (!requiresPayment) {
+  return handleCORS(NextResponse.json({
+    requiresPayment: false,
+    event: { 
+      ...event,
+      public_rsvp_path: publicRsvpPath,
+      gifts: giftsInserted,
+      wedding_roles: rolesInserted
+    }
+  }, { status: 200 }));
+}
 
   // Plano pago → cria sessão do Stripe usando o PRICE correspondente
   try {
@@ -385,6 +466,8 @@ if (route === '/events' && method === 'POST') {
         event_id: event.id,
         org_id: org.id,
         guests: String(safeGuests),
+        gifts: giftsInserted,
+        wedding_roles: rolesInserted,
         tier,
       },
     })
@@ -402,11 +485,12 @@ if (route === '/events' && method === 'POST') {
       ))
     }
 
-    return handleCORS(NextResponse.json({
-      requiresPayment: true,
-      checkoutUrl: session.url,
-      event
-    }, { status: 200 }))
+  return handleCORS(NextResponse.json({
+    requiresPayment: true,
+    checkoutUrl: session.url,
+    event: { ...event, public_rsvp_path: publicRsvpPath }
+  }, { status: 200 }));
+
   } catch (e) {
     console.error('Stripe checkout error:', e)
     return handleCORS(NextResponse.json(
@@ -429,11 +513,14 @@ if (route === '/events' && method === 'POST') {
           *,
           guests (*),
           rsvps (*),
-          messages (*)
+          messages (*),
+          gifts (*),             
+          wedding_roles (*)    
         `)
         .eq('id', eventId)
         .eq('org_id', org.id)
-        .single()
+        .single();
+
 
       if (error) {
         return handleCORS(NextResponse.json(
@@ -742,23 +829,37 @@ if (route === '/events' && method === 'POST') {
       return handleCORS(NextResponse.json({ received: true }))
     }
 
-    if (route.startsWith('/public/rsvp/') && method === 'GET') {
-      const token = route.split('/')[3]
-      const { data: event, error } = await createSupabaseAdmin()
-        .from('events')
-        .select('id, title, description, location, starts_at, rsvp_token, allow_companion, template_kind, confirm_page')
-        .eq('rsvp_token', token)
-        .single()
+if (route.startsWith('/public/rsvp/') && method === 'GET') {
+  const raw = route.split('/')[3] || ''
+  const token = decodeURIComponent(raw).trim()
 
-      if (error || !event) {
-        return handleCORS(NextResponse.json(
-          { error: "Event not found" },
-          { status: 404 }
-        ))
-      }
+  // Log temporário pra depurar (remova em prod)
+  console.log('[public/rsvp] token:', token)
 
-      return handleCORS(NextResponse.json(event))
-    }
+  const supabaseAdmin = createSupabaseAdmin()
+  const { data: event, error } = await supabaseAdmin
+    .from('events')
+    .select(`
+      id, title, description, location, starts_at, rsvp_token,
+      allow_companion, template_kind, confirm_page,
+      location, maps_url,
+      gifts (*),
+      wedding_roles (*)
+    `)
+    .eq('rsvp_token', token)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[public/rsvp] query error:', error)
+    return handleCORS(NextResponse.json({ error: 'DB error' }, { status: 500 }))
+  }
+  if (!event) {
+    return handleCORS(NextResponse.json({ error: 'Event not found' }, { status: 404 }))
+  }
+
+  return handleCORS(NextResponse.json(event))
+}
+
 
     // GET /events/:id/guests?status=confirmed|all
 if (route.startsWith('/events/') && route.endsWith('/guests') && method === 'GET') {
@@ -815,7 +916,10 @@ if (route.startsWith('/events/') && route.endsWith('/guests') && method === 'GET
     .map(r => ({ ...r.guest, rsvp_status: r.status }))
     .filter(Boolean);
 
-  return handleCORS(NextResponse.json({ guests }));
+  const prefix = shortPrefixForTemplateKind(event.template_kind);
+const eventWithPath = { ...event, public_rsvp_path: `/${prefix}/${event.rsvp_token}` };
+return handleCORS(NextResponse.json(eventWithPath));
+
 }
 
     // Public RSVP page data

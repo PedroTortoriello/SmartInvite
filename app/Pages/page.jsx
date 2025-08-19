@@ -30,6 +30,8 @@ import {
 } from 'lucide-react'
 import { getPlanForGuests, formatBRLFromCents } from '@/lib/billing/pricing'
 import { Switch } from "@/components/ui/switch"
+import Link from 'next/link'
+import AppAlert from '@/components/ui/app-alert'
 
 export default function Dashboard() {
   const router = useRouter()
@@ -44,7 +46,7 @@ const [loadingConfirm, setLoadingConfirm] = useState(false);
   const [templates, setTemplates] = useState([])
   const [dashboardStats, setDashboardStats] = useState({})
   const [currentEvent, setCurrentEvent] = useState(null)
-
+const [alert, setAlert] = useState(null);
   // Forms state
   // estado do formulário
 const [eventForm, setEventForm] = useState({
@@ -115,9 +117,15 @@ const [eventForm, setEventForm] = useState({
         return
       }
       const origin = typeof window !== 'undefined' ? window.location.origin : ''
-      const url = `${origin}/r/${event.rsvp_token}`
+      const path = event.public_rsvp_path || `/r/${event.rsvp_token}`;
+      const url = `${origin}${path}`;
+
       await navigator.clipboard.writeText(url)
-      alert('Link copiado!')
+        setAlert({
+    type: "success",
+    title: "Link copiado!",
+    message: "O link do evento foi copiado com sucesso!",
+  });
     } catch (e) {
       console.error(e)
       alert('Não foi possível copiar o link.')
@@ -131,57 +139,57 @@ function toSaoPauloISO(dtLocal) {
   return `${dtLocal}:00-03:00`;         // Brasil sem horário de verão desde 2019
 }
 
-const createEvent = async (e) => {
-  e.preventDefault()
-  setIsSubmitting(true)
+  const createEvent = async (e) => {
+    e.preventDefault()
+    setIsSubmitting(true)
 
-  try {
-    const payload = {
-      ...eventForm,
-      startsAt: toSaoPauloISO(eventForm.startsAt),
-      endsAt: eventForm.endsAt ? toSaoPauloISO(eventForm.endsAt) : null,
-      allowCompanion: !!eventForm.allowCompanion,
-    }
-
-    const res = await fetch('/api/events', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-
-    let data = null
-    try { data = await res.json() } catch {}
-
-    const needsPayment = res.status === 402 || (data && data.requiresPayment)
-    if (needsPayment) {
-      const checkoutUrl = data?.checkoutUrl || data?.url || data?.session?.url
-      if (checkoutUrl) {
-        window.location.href = checkoutUrl
-        return
-      } else {
-        throw new Error('Não foi possível obter a URL de pagamento.')
+    try {
+      const payload = {
+        ...eventForm,
+        startsAt: toSaoPauloISO(eventForm.startsAt),
+        endsAt: eventForm.endsAt ? toSaoPauloISO(eventForm.endsAt) : null,
+        allowCompanion: !!eventForm.allowCompanion,
       }
-    }
 
-    if (!res.ok) {
-      throw new Error(data?.error || 'Erro ao criar evento')
-    }
+      const res = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
 
-    setEvents([data, ...events])
-    setEventForm({ title: '', description: '', location: '', startsAt: '', endsAt: '', guests: 0, allowCompanion: false })
+      let data = null
+      try { data = await res.json() } catch {}
+
+      const needsPayment = res.status === 402 || (data && data.requiresPayment)
+      if (needsPayment) {
+        const checkoutUrl = data?.checkoutUrl || data?.url || data?.session?.url
+        if (checkoutUrl) {
+          window.location.href = checkoutUrl
+          return
+        } else {
+          throw new Error('Não foi possível obter a URL de pagamento.')
+        }
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao criar evento')
+      }
+
+      setEvents([data, ...events])
+      setEventForm({ title: '', description: '', location: '', startsAt: '', endsAt: '', guests: 0, allowCompanion: false })
+      alert('Evento criado!')
+      // Se for até 25 convidados e não precisar pagar
+  if ((data.guests || 0) <= 25) {
+    window.location.reload()
+  } else {
     alert('Evento criado!')
-    // Se for até 25 convidados e não precisar pagar
-if ((data.guests || 0) <= 25) {
-  window.location.reload()
-} else {
-  alert('Evento criado!')
-}
-  } catch (err) {
-    alert(err.message)
-  } finally {
-    setIsSubmitting(false)
   }
-}
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
 
 
@@ -361,216 +369,26 @@ const removeRole = (i) =>
      <Suspense fallback={null}>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-100">
       {/* Topbar */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="text-xl font-bold bg-gradient-to-r from-blue-800 to-sky-500 bg-clip-text text-transparent">
-            SmartInvite 
-          </div>
-          <div className="flex items-center gap-3">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-blue-700 to-sky-500 hover:from-blue-800 hover:to-sky-600">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Criar Evento
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-white/95 backdrop-blur border border-gray-200">
-                <DialogHeader>
-                  <DialogTitle className="text-blue-900">Novo evento</DialogTitle>
-                  <DialogDescription>Preencha os detalhes do seu evento.</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={createEvent} className="space-y-4">
-                  <div>
-                    <Label>Título</Label>
-                    <Input value={eventForm.title} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} required />
-                  </div>
-                  <div>
-                    <Label>Descrição</Label>
-                    <Textarea value={eventForm.description} onChange={e => setEventForm({ ...eventForm, description: e.target.value })} />
-                  </div>
-<div>
-  <Label>Número de Convidados</Label>
-  <div className="flex items-center gap-2">
-    <Button
-      type="button"
-      variant="outline"
-      onClick={() =>
-        setEventForm({ ...eventForm, guests: Math.max((eventForm.guests || 0) - 1, 0) })
-      }
-    >
-      -
-    </Button>
-    <Input
-      type="number"
-      min="0"
-      value={eventForm.guests || 0}
-      onChange={(e) =>
-        setEventForm({ ...eventForm, guests: Math.max(parseInt(e.target.value) || 0, 0) })
-      }
-      className="w-24 text-center"
-    />
-    <Button
-      type="button"
-      variant="outline"
-      onClick={() => setEventForm({ ...eventForm, guests: (eventForm.guests || 0) + 1 })}
-    >
-      +
-    </Button>
+
+<header className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
+  <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="text-xl font-bold bg-gradient-to-r from-blue-800 to-sky-500 bg-clip-text text-transparent">
+      SmartInvite
+    </div>
+
+    <div className="flex items-center gap-3">
+      <Button
+        asChild
+        className="bg-gradient-to-r from-blue-700 to-sky-500 hover:from-blue-800 hover:to-sky-600"
+      >
+        <Link href="/Pages/newEvent">
+          <Plus className="w-4 h-4 mr-2" />
+          Criar Evento
+        </Link>
+      </Button>
+    </div>
   </div>
-
-{/* <div>
-  <Label>Tipo de página</Label>
-<ShadSelect
-  value={eventForm.templateKind || "default"}
-  onValueChange={(value) => setEventForm({ ...eventForm, templateKind: value })}
->
-  <SelectTrigger className="w-full mt-1">
-    <SelectValue placeholder="Selecione o tipo" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="default">Padrão</SelectItem>
-    <SelectItem value="aniversario">Aniversário</SelectItem>
-    <SelectItem value="casamento">Casamento</SelectItem>
-    <SelectItem value="outros">Outros</SelectItem>
-  </SelectContent>
-</ShadSelect>
-
-  <p className="text-xs text-gray-500 mt-1">
-    Isso define os blocos extras (lista de presentes, padrinhos etc.) da página pública.
-  </p>
-</div> */}
-{/* Lista de Presentes (aniversário e casamento) */}
-{['aniversario','casamento'].includes(eventForm.templateKind) && (
-  <div className="mt-3 space-y-2">
-    <Label>Lista de presentes</Label>
-    {(eventForm.initialGifts||[]).map((g,i)=>(
-      <div key={i} className="grid grid-cols-1 sm:grid-cols-6 gap-2">
-        <Input className="sm:col-span-2" placeholder="Título"
-          value={g.title}
-          onChange={e=>editGift(i,'title', e.target.value)} />
-        <Input className="sm:col-span-3" placeholder="Link (opcional)"
-          value={g.link||''}
-          onChange={e=>editGift(i,'link', e.target.value)} />
-        <Input className="sm:col-span-1" type="number" min="0" placeholder="Preço (centavos)"
-          value={g.priceCents||''}
-          onChange={e=>editGift(i,'priceCents', e.target.value.replace(/\D/g,''))} />
-        <Button type="button" variant="outline" onClick={()=>removeGift(i)}>Remover</Button>
-      </div>
-    ))}
-    <Button type="button" variant="outline" onClick={addGift}>+ Adicionar presente</Button>
-    <p className="text-xs text-gray-500">Preço em centavos é opcional (ex.: R$ 199,90 → 19990).</p>
-  </div>
-)}
-
-{/* Padrinhos/Madrinhas (casamento) */}
-{eventForm.templateKind === 'casamento' && (
-  <div className="mt-4 space-y-2">
-    <Label>Padrinhos e Madrinhas</Label>
-    {(eventForm.initialRoles||[]).map((r,i)=>(
-      <div key={i} className="grid grid-cols-1 sm:grid-cols-5 gap-2">
-        <ShadSelect
-          value={r.role}
-          onValueChange={(value) => editRole(i, "role", value)}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Selecione o tipo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="padrinho">Padrinho</SelectItem>
-            <SelectItem value="madrinha">Madrinha</SelectItem>
-          </SelectContent>
-        </ShadSelect>
-        <Input className="sm:col-span-3" placeholder="Nome"
-          value={r.name}
-          onChange={e=>editRole(i,'name', e.target.value)} />
-        <Button type="button" variant="outline" onClick={()=>removeRole(i)}>Remover</Button>
-      </div>
-    ))}
-    <Button type="button" variant="outline" onClick={addRole}>+ Adicionar</Button>
-  </div>
-)}
-
-
-
-  {/* Aviso de preço dinâmico */}
-  <div
-    className={`mt-2 rounded-lg border p-3 text-sm ${
-      plan.requiresPayment
-        ? 'border-amber-300 bg-amber-50 text-amber-800'
-        : 'border-emerald-300 bg-emerald-50 text-emerald-800'
-    }`}
-  >
-    {plan.requiresPayment ? (
-      <div className="space-y-1">
-        <div className="font-medium">
-          {plan.label}
-        </div>
-        <div>
-          Valor: <b>R$ {formatBRLFromCents(plan.unit_amount)}</b> para {guestsCount} convidado
-          {guestsCount === 1 ? '' : 's'}.
-        </div>
-        <div className="text-xs opacity-80">
-          O pagamento será solicitado ao criar o evento.
-        </div>
-      </div>
-    ) : (
-      <div className="space-y-1">
-        <div className="font-medium">Plano gratuito 🎉</div>
-        <div>Até 25 convidados sem custo.</div>
-      </div>
-    )}
-  </div>
-
-  <p className="text-xs text-gray-500 mt-1">Informe quantos convidados estarão presentes.</p>
-</div>
-<div>
-  <Label htmlFor="allowCompanion">Permitir acompanhante?</Label>
-  <div className="flex items-center justify-between rounded-md border p-3 mt-1">
-    <span className="text-sm text-gray-600">
-      {eventForm.allowCompanion
-        ? "Os convidados poderão levar um acompanhante"
-        : "Os convidados não poderão levar acompanhante"}
-    </span>
-    <Switch
-      id="allowCompanion"
-      checked={!!eventForm.allowCompanion}
-      onCheckedChange={(checked) =>
-        setEventForm({ ...eventForm, allowCompanion: checked })
-      }
-    />
-  </div>
- </div>
-
-                  <div>
-                    <Label>Local</Label>
-                    <Input value={eventForm.location} onChange={e => setEventForm({ ...eventForm, location: e.target.value })} />
-                  </div>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Data</Label>
-                      <Input type="datetime-local" value={eventForm.startsAt} onChange={e => setEventForm({ ...eventForm, startsAt: e.target.value })} required />
-                    </div>
-                  </div>
-<Button
-  type="submit"
-  className="w-full bg-gradient-to-r from-blue-700 to-sky-500"
-  disabled={isSubmitting}
->
-  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-  {plan.requiresPayment
-    ? `Continuar (R$ ${formatBRLFromCents(plan.unit_amount)})`
-    : 'Criar'}
-</Button>
-
-                </form>
-              </DialogContent>
-            </Dialog>
-            <Button variant="outline" onClick={handleLogout} className="border-blue-300 text-blue-700 hover:bg-blue-50">
-              <LogOut className="w-4 h-4 mr-2" /> Sair
-            </Button>
-          </div>
-        </div>
-      </header>
+</header>
 
       {/* Conteúdo */}
       <main className="max-w-6xl mx-auto px-4 py-8">
@@ -877,6 +695,14 @@ const removeRole = (i) =>
             </Card>
           </TabsContent>
         </Tabs>
+          {alert && (
+                <AppAlert
+                  type={alert.type}
+                  title={alert.title}
+                  message={alert.message}
+                  onClose={() => setAlert(null)}
+                />
+              )}
       </main>
     </div>
     </Suspense>
