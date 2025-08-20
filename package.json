@@ -2,13 +2,13 @@
     "name": "nextjs-mongo-template",
     "version": "0.1.0",
     "private": true,
-"scripts": {
-  "dev": "cross-env NEXT_DISABLE_REACT_DEV_OVERLAY=true NODE_OPTIONS=--max-old-space-size=512 next dev --hostname 0.0.0.0 --port 3000",
-  "dev:no-reload": "cross-env NEXT_DISABLE_REACT_DEV_OVERLAY=true next dev --hostname 0.0.0.0 --port 3000",
-  "dev:webpack": "cross-env NEXT_DISABLE_REACT_DEV_OVERLAY=true next dev --hostname 0.0.0.0 --port 3000",
-  "build": "next build",
-  "start": "next start"
-},
+    "scripts": {
+        "dev": "cross-env NEXT_DISABLE_REACT_DEV_OVERLAY=true NODE_OPTIONS=--max-old-space-size=512 next dev --hostname 0.0.0.0 --port 3000",
+        "dev:no-reload": "cross-env NEXT_DISABLE_REACT_DEV_OVERLAY=true next dev --hostname 0.0.0.0 --port 3000",
+        "dev:webpack": "cross-env NEXT_DISABLE_REACT_DEV_OVERLAY=true next dev --hostname 0.0.0.0 --port 3000",
+        "build": "next build",
+        "start": "next start"
+    },
     "dependencies": {
         "@hookform/resolvers": "^5.1.1",
         "@radix-ui/react-accordion": "^1.2.11",
@@ -54,6 +54,7 @@
         "next": "14.2.3",
         "next-themes": "^0.4.6",
         "react": "^18",
+        "react-countdown": "^2.3.6",
         "react-day-picker": "^9.7.0",
         "react-dom": "^18",
         "react-hook-form": "^7.58.1",

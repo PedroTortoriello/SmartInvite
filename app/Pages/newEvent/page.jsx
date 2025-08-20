@@ -336,7 +336,7 @@ const [alert, setAlert] = useState(null);
             <CardContent>
               <form onSubmit={createEvent} className="space-y-6">
                                 {/* Tipo de página */}
-                 {/* <div className="space-y-2">
+           <div className="space-y-2">
                   <Label htmlFor="templateKind">Tipo de Evento</Label>
                   <div className="relative">
    <select
@@ -366,7 +366,7 @@ const [alert, setAlert] = useState(null);
                   <p className="text-xs text-gray-500">
                     Isso ativa blocos extras (lista de presentes, padrinhos etc.) na página pública.
                   </p>
-                </div>  */}
+                </div>  
                 {/* Título */}
                 <div className="space-y-2">
                   <Label htmlFor="title">Título</Label>

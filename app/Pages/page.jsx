@@ -383,7 +383,7 @@ const removeRole = (i) =>
       SmartInvite
     </div>
 
- <div className="sm:hidden">
+ <div >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon">
