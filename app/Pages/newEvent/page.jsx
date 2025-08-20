@@ -336,7 +336,7 @@ const [alert, setAlert] = useState(null);
             <CardContent>
               <form onSubmit={createEvent} className="space-y-6">
                                 {/* Tipo de página */}
-           <div className="space-y-2">
+           {/* <div className="space-y-2">
                   <Label htmlFor="templateKind">Tipo de Evento</Label>
                   <div className="relative">
    <select
@@ -359,7 +359,7 @@ const [alert, setAlert] = useState(null);
   <option value="casamento">Casamento</option>
   <option value="workshop">Workshop</option>
   <option value="empresarial">Empresarial</option>
-</select>
+</select> */}
 
                     <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500">▾</span>
                   </div>
