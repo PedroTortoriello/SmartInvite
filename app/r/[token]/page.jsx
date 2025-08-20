@@ -36,6 +36,7 @@ const dateLabel = useMemo(() => {
         const data = await res.json()
         if (!res.ok) throw new Error(data?.error || 'Evento não encontrado')
         setEvent(data)
+      console.log('Fetched event:', data)
       } catch (e) {
         setError(e.message || 'Falha ao carregar evento')
       } finally {
@@ -137,70 +138,81 @@ const dateLabel = useMemo(() => {
               <hr className="my-5 border-gray-300" />
 
               {/* Form */}
-              <form onSubmit={onSubmit} className="space-y-5">
-                {/* Nome */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Seu nome <span className="text-gray-400">(obrigatório)</span>
-                  </label>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Nome e sobrenome"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-300"
-                  />
-                </div>
-
-                {/* Acompanhantes */}
-{/* Acompanhantes */}
-{event?.allow_companion && (
+<form onSubmit={onSubmit} className="space-y-5">
+  {/* Nome */}
   <div>
-    <div className="flex items-center justify-between mb-2">
-      <label className="block text-sm font-medium text-gray-700">Acompanhantes</label>
-      <button
-        type="button"
-        onClick={addCompanion}
-        className="px-3 py-1 text-sm rounded-full border border-blue-400 text-blue-600 hover:bg-blue-50"
-      >
-        + Adicionar
-      </button>
-    </div>
-
-    {companions.length > 0 && (
-      <div className="space-y-2">
-        {companions.map((c, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input
-              value={c}
-              onChange={(e) => editCompanion(i, e.target.value)}
-              placeholder={`Acompanhante ${i + 1}`}
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-300"
-            />
-            <button
-              type="button"
-              onClick={() => removeCompanion(i)}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-100"
-            >
-              Remover
-            </button>
-          </div>
-        ))}
-      </div>
-    )}
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      Seu nome <span className="text-gray-400">(obrigatório)</span>
+    </label>
+    <input
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+      placeholder="Nome e sobrenome"
+      disabled={!event?.limite}
+      className="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-100 disabled:text-gray-400"
+    />
   </div>
-)}
 
+  {/* Acompanhantes */}
+  {event?.allow_companion && (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className="block text-sm font-medium text-gray-700">Acompanhantes</label>
+        <button
+          type="button"
+          onClick={addCompanion}
+          disabled={!event?.limite}
+          className="px-3 py-1 text-sm rounded-full border border-blue-400 text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+        >
+          + Adicionar
+        </button>
+      </div>
 
-                {error && <p className="text-sm text-red-500">{error}</p>}
+      {companions.length > 0 && (
+        <div className="space-y-2">
+          {companions.map((c, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                value={c}
+                onChange={(e) => editCompanion(i, e.target.value)}
+                placeholder={`Acompanhante ${i + 1}`}
+                disabled={!event?.limite}
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-100 disabled:text-gray-400"
+              />
+              <button
+                type="button"
+                onClick={() => removeCompanion(i)}
+                disabled={!event?.limite}
+                className="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Remover
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )}
 
-                <button
-                  type="submit"
-                  disabled={!canSubmit}
-                  className="w-full py-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-400 text-white font-semibold shadow-md hover:opacity-90 disabled:opacity-50"
-                >
-                  {submitting ? 'Enviando…' : 'Confirmar presença'}
-                </button>
-              </form>
+  {/* Aviso de erro geral */}
+  {error && <p className="text-sm text-red-500">{error}</p>}
+
+  {/* Aviso de limite */}
+  {!event?.limite && (
+    <p className="text-sm font-medium text-red-600 bg-red-50 border border-red-200 px-4 py-2 rounded-lg">
+      O limite de convidados para este evento já foi atingido.  
+      Infelizmente não é mais possível confirmar presença.
+    </p>
+  )}
+
+  <button
+    type="submit"
+    disabled={!canSubmit || !event?.limite}
+    className="w-full py-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-400 text-white font-semibold shadow-md hover:opacity-90 disabled:opacity-50"
+  >
+    {submitting ? 'Enviando…' : 'Confirmar presença'}
+  </button>
+</form>
             </>
           )}
         </main>

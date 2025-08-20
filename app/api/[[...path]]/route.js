@@ -830,13 +830,14 @@ if (!requiresPayment) {
     }
 
 if (route.startsWith('/public/rsvp/') && method === 'GET') {
-  const raw = route.split('/')[3] || ''
-  const token = decodeURIComponent(raw).trim()
+  const raw = route.split('/')[3] || '';
+  const token = decodeURIComponent(raw).trim();
 
-  // Log temporário pra depurar (remova em prod)
-  console.log('[public/rsvp] token:', token)
+  console.log('[public/rsvp] token:', token);
 
-  const supabaseAdmin = createSupabaseAdmin()
+  const supabaseAdmin = createSupabaseAdmin();
+
+  // 1) Buscar evento + limite guests_planned
   const { data: event, error } = await supabaseAdmin
     .from('events')
     .select(`
@@ -844,21 +845,46 @@ if (route.startsWith('/public/rsvp/') && method === 'GET') {
       allow_companion, template_kind, confirm_page,
       location, maps_url,
       gifts (*),
-      wedding_roles (*)
+      wedding_roles (*),
+      guests_planned
     `)
     .eq('rsvp_token', token)
-    .maybeSingle()
+    .maybeSingle();
 
   if (error) {
-    console.error('[public/rsvp] query error:', error)
-    return handleCORS(NextResponse.json({ error: 'DB error' }, { status: 500 }))
+    console.error('[public/rsvp] query error:', error);
+    return handleCORS(NextResponse.json({ error: 'DB error' }, { status: 500 }));
   }
   if (!event) {
-    return handleCORS(NextResponse.json({ error: 'Event not found' }, { status: 404 }))
+    return handleCORS(NextResponse.json({ error: 'Event not found' }, { status: 404 }));
   }
 
-  return handleCORS(NextResponse.json(event))
+  // 2) Contar quantos guests já existem para esse evento
+  const { count: guestsCount, error: guestsErr } = await supabaseAdmin
+    .from('guests')
+    .select('id', { count: 'exact', head: true })
+    .eq('event_id', event.id);
+
+  if (guestsErr) {
+    console.error('[public/rsvp] guests count error:', guestsErr);
+    return handleCORS(NextResponse.json({ error: 'DB error (guests)' }, { status: 500 }));
+  }
+
+  // 3) Verificar limite
+  const planned = Number(event.guests_planned); // agora assumido sempre > 0
+  const current = guestsCount ?? 0;
+  const limite = current < planned;
+
+  return handleCORS(
+    NextResponse.json({
+      ...event,
+      limite,
+      guests_planned: planned,
+      guests_count: current,
+    })
+  );
 }
+
 
 
     // GET /events/:id/guests?status=confirmed|all
