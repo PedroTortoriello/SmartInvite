@@ -71,10 +71,6 @@ function AuthInner() {
                   <Label>Seu nome</Label>
                   <Input value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} required />
                 </div>
-                <div>
-                  <Label>Nome da organização</Label>
-                  <Input value={form.orgName} onChange={e => setForm({ ...form, orgName: e.target.value })} required />
-                </div>
               </>
             )}
 
